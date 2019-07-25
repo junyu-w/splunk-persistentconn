@@ -13,8 +13,8 @@ const (
 	OPCODE_REQUEST_ALLOW_STREAM = 0x08 // 4th bit
 )
 
-// Packet object representing a received packet
-type Packet struct {
+// RequestPacket object representing a received packet
+type RequestPacket struct {
 	opcode     rune
 	command    []string
 	commandArg string
@@ -22,29 +22,29 @@ type Packet struct {
 }
 
 // if this packet represents the beginning of the request
-func (p *Packet) isFirst() bool {
+func (p *RequestPacket) isFirst() bool {
 	return (p.opcode & OPCODE_REQUEST_INIT) != 0
 }
 
 // if this packet represents the end of the request
-func (p *Packet) isLast() bool {
+func (p *RequestPacket) isLast() bool {
 	return (p.opcode & OPCODE_REQUEST_END) != 0
 }
 
 // if this packet contains an input block for the request
-func (p *Packet) hasBlock() bool {
+func (p *RequestPacket) hasBlock() bool {
 	return (p.opcode & OPCODE_REQUEST_BLOCK) != 0
 }
 
 // if this packet allows stream ???
 // TODO: figure out how this is used.
-func (p *Packet) allowStream() bool {
+func (p *RequestPacket) allowStream() bool {
 	return (p.opcode & OPCODE_REQUEST_ALLOW_STREAM) != 0
 }
 
-// Read and return a packet based on input and communication protocol set by splunkd.
-func Read(reader io.Reader) (*Packet, error) {
-	packet := &Packet{}
+// ReadPacket creates a packet based on input and communication protocol set by splunkd.
+func ReadPacket(reader io.Reader) (*RequestPacket, error) {
+	packet := &RequestPacket{}
 	if err := packet.readOpcode(reader); err != nil {
 		return nil, err
 	}
@@ -66,7 +66,7 @@ func Read(reader io.Reader) (*Packet, error) {
 // Read opcode from an IO reader and set its value to this packet
 // and as a side-effect it moves the pointer on the reader to the
 // byte after the opcode byte
-func (p *Packet) readOpcode(reader io.Reader) error {
+func (p *RequestPacket) readOpcode(reader io.Reader) error {
 	for {
 		// opcode is the first NON-NEW-LINE byte of the input reader's content
 		opbyte := make([]byte, 1, 1)
@@ -90,7 +90,7 @@ func (p *Packet) readOpcode(reader io.Reader) error {
 // read command and args from input and set its value to this packet.
 // As a side-effect the pointer on the input reader will be moved to the byte
 // after command and command args.
-func (p *Packet) readCommandAndArgs(reader io.Reader) error {
+func (p *RequestPacket) readCommandAndArgs(reader io.Reader) error {
 	// read number of commands to read from -- protocol
 	// <num_of_commands>\n
 	numOfCommandPieces, err := readNumber(reader)
@@ -118,7 +118,7 @@ func (p *Packet) readCommandAndArgs(reader io.Reader) error {
 }
 
 // read input block from input reader and set its value to this packet.
-func (p *Packet) readInputBlock(reader io.Reader) error {
+func (p *RequestPacket) readInputBlock(reader io.Reader) error {
 	block, err := readString(reader)
 	if err != nil {
 		return err
