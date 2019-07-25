@@ -2,6 +2,7 @@ package persistentconn
 
 import (
 	"fmt"
+	"io"
 	"log"
 	"net/http"
 	"os"
@@ -30,8 +31,31 @@ func NewServer() *Server {
 // Run starts a persistentconn server and starts handling request sent from
 // client (with splunkd as the middle layer)
 func (s *Server) Run() {
-	go s.readInputPacket()
+	go s.handleRequest()
 	go s.processResponse()
+	s.startProcessingInputPackets()
+}
+
+// readInputPacket starts a separate goroutine that reads request sent from client
+// and is the entrypoint of a server process
+func (s *Server) startProcessingInputPackets() {
+	for {
+		inPacket, err := ReadPacket(os.Stdin)
+		if err != nil {
+			if err == io.EOF {
+				continue
+			}
+			log.Fatal(err)
+		}
+		req, err := parseRequest(inPacket)
+		if err != nil {
+			log.Fatal(err)
+		}
+		s.requestChan <- req
+	}
+}
+
+func (s *Server) handleRequest() {
 	for req := range s.requestChan {
 		s.responseQueue = append(s.responseQueue, responseQueueSlot{})
 		handler := s.registry.getHandler(req.PathInfo)
@@ -47,22 +71,6 @@ func (s *Server) Run() {
 			resp.slotIndex = respIndex
 			s.responseChan <- resp
 		}(req, len(s.responseQueue)-1)
-	}
-}
-
-// readInputPacket starts a separate goroutine that reads request sent from client
-// and is the entrypoint of a server process
-func (s *Server) readInputPacket() {
-	for {
-		inPacket, err := ReadPacket(os.Stdin)
-		if err != nil {
-			log.Fatal(err)
-		}
-		req, err := parseRequest(inPacket)
-		if err != nil {
-			log.Fatal(err)
-		}
-		s.requestChan <- req
 	}
 }
 
