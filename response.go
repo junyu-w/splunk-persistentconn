@@ -4,20 +4,15 @@ package persistentconn
 type Response struct {
 	statusCode int
 	body       string
+	slotIndex  int
 }
 
 type responseQueueSlot struct {
-	resp *Response
+	resp Response
 }
 
 type responseQueue []responseQueueSlot
 
 func newResponseQueue() responseQueue {
 	return make([]responseQueueSlot, 0)
-}
-
-func (rq responseQueue) allocateNewSlot() responseQueueSlot {
-	slot := responseQueueSlot{}
-	rq = append(rq, slot)
-	return slot
 }

@@ -11,7 +11,7 @@ import (
 // and writes response back to the client
 type Server struct {
 	requestChan   chan Request
-	responseChan  chan responseQueueSlot
+	responseChan  chan Response
 	responseQueue responseQueue
 	registry      *handlerRegistry
 }
@@ -20,10 +20,10 @@ type Server struct {
 func NewServer() *Server {
 	return &Server{
 		requestChan:   make(chan Request),
-		responseChan:  make(chan responseQueueSlot),
+		responseChan:  make(chan Response),
 		responseQueue: newResponseQueue(),
 		// TODO: add registry initialization
-		registry: nil,
+		registry: &handlerRegistry{},
 	}
 }
 
@@ -33,10 +33,10 @@ func (s *Server) Run() {
 	go s.readInputPacket()
 	go s.processResponse()
 	for req := range s.requestChan {
-		slot := s.responseQueue.allocateNewSlot()
+		s.responseQueue = append(s.responseQueue, responseQueueSlot{})
 		handler := s.registry.getHandler(req.PathInfo)
 		// handle request in a goroutine
-		go func(req Request, respSlot responseQueueSlot) {
+		go func(req Request, respIndex int) {
 			resp, err := handler(req)
 			if err != nil {
 				resp = Response{
@@ -44,9 +44,9 @@ func (s *Server) Run() {
 					body:       err.Error(),
 				}
 			}
-			slot.resp = &resp
-			s.responseChan <- respSlot
-		}(req, slot)
+			resp.slotIndex = respIndex
+			s.responseChan <- resp
+		}(req, len(s.responseQueue)-1)
 	}
 }
 
@@ -68,8 +68,8 @@ func (s *Server) readInputPacket() {
 
 // processResponse proccesses response from handler and sent the response back to the client
 func (s *Server) processResponse() {
-	for slot := range s.responseChan {
+	for resp := range s.responseChan {
 		// TODO: implement response queue checking and writing response to stdout
-		fmt.Printf("Got response - status: %d - body: %s\n", slot.resp.statusCode, slot.resp.body)
+		fmt.Printf("Got response - status: %d - body: %s - index: %d\n", resp.statusCode, resp.body, resp.slotIndex)
 	}
 }
