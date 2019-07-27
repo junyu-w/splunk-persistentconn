@@ -7,10 +7,14 @@ import (
 )
 
 const (
-	OPCODE_REQUEST_INIT         = 0x01 // 1st bit
-	OPCODE_REQUEST_BLOCK        = 0x02 // 2nd bit
-	OPCODE_REQUEST_END          = 0x04 // 3rd bit
-	OPCODE_REQUEST_ALLOW_STREAM = 0x08 // 4th bit
+	// OPCODE_REQUEST_INIT is a bit mask that's used to verify if request is the first request
+	OPCODE_REQUEST_INIT = 0x01
+	// OPCODE_REQUEST_BLOCK is a bit mask that's used to verify if request contains input block
+	OPCODE_REQUEST_BLOCK = 0x02
+	// OPCODE_REQUEST_END is a bit mask that's used to verify if request is the end
+	OPCODE_REQUEST_END = 0x04
+	// OPCODE_REQUEST_ALLOW_STREAM is a bit mask that's used to verify if request indicates streaming handler is allowed
+	OPCODE_REQUEST_ALLOW_STREAM = 0x08
 )
 
 // RequestPacket object representing a received packet
@@ -48,6 +52,7 @@ func ReadPacket(reader io.Reader) (*RequestPacket, error) {
 	if err := packet.readOpcode(reader); err != nil {
 		return nil, err
 	}
+	fmt.Println("Opcode: ", packet.opcode)
 	if packet.isFirst() {
 		// if packet is the beginning of the request, read command and command args
 		if err := packet.readCommandAndArgs(reader); err != nil {
@@ -59,6 +64,7 @@ func ReadPacket(reader io.Reader) (*RequestPacket, error) {
 		if err := packet.readInputBlock(reader); err != nil {
 			return nil, err
 		}
+		fmt.Println("Block: ", packet.block)
 	}
 	return packet, nil
 }

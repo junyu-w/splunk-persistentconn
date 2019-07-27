@@ -13,8 +13,8 @@ func (rg *handlerRegistry) getHandler(path string) Handler {
 	return func(req Request) (Response, error) {
 		time.Sleep(1 * time.Second)
 		return Response{
-			statusCode: 200,
-			body:       "hello world",
+			StatusCode: 200,
+			Body:       "hello world",
 		}, nil
 	}
 }

@@ -36,7 +36,7 @@ func (s *Server) Run() {
 	s.startProcessingInputPackets()
 }
 
-// readInputPacket starts a separate goroutine that reads request sent from client
+// startProcessingInputPackets starts a separate goroutine that reads request sent from client
 // and is the entrypoint of a server process
 func (s *Server) startProcessingInputPackets() {
 	for {
@@ -47,6 +47,7 @@ func (s *Server) startProcessingInputPackets() {
 			}
 			log.Fatal(err)
 		}
+		// TODO: we should only process packet that has a input block. opcode=0x02
 		req, err := parseRequest(inPacket)
 		if err != nil {
 			log.Fatal(err)
@@ -57,18 +58,20 @@ func (s *Server) startProcessingInputPackets() {
 
 func (s *Server) handleRequest() {
 	for req := range s.requestChan {
-		s.responseQueue = append(s.responseQueue, responseQueueSlot{})
+		s.responseQueue = append(s.responseQueue, Response{isPlaceholder: true})
 		handler := s.registry.getHandler(req.PathInfo)
 		// handle request in a goroutine
 		go func(req Request, respIndex int) {
 			resp, err := handler(req)
 			if err != nil {
 				resp = Response{
-					statusCode: http.StatusInternalServerError,
-					body:       err.Error(),
+					StatusCode: http.StatusInternalServerError,
+					Body:       err.Error(),
 				}
 			}
-			resp.slotIndex = respIndex
+			fmt.Printf("Got response - status: %d - body: %s - index: %d\n", resp.StatusCode, resp.Body, respIndex)
+			// FIXME: race condition where flushing has shrinked the queue so resulting in index out of range :(
+			s.responseQueue[respIndex] = resp
 			s.responseChan <- resp
 		}(req, len(s.responseQueue)-1)
 	}
@@ -76,8 +79,13 @@ func (s *Server) handleRequest() {
 
 // processResponse proccesses response from handler and sent the response back to the client
 func (s *Server) processResponse() {
-	for resp := range s.responseChan {
-		// TODO: implement response queue checking and writing response to stdout
-		fmt.Printf("Got response - status: %d - body: %s - index: %d\n", resp.statusCode, resp.body, resp.slotIndex)
+	for range s.responseChan {
+		flushedCount, err := s.responseQueue.flushResponses()
+		if err != nil {
+			fmt.Println("Failed to flush response - Error:", err)
+			continue
+		}
+		fmt.Printf("Flushed %d responses\n", flushedCount)
+		s.responseQueue = s.responseQueue[flushedCount:]
 	}
 }
