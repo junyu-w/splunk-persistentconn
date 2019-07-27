@@ -52,15 +52,17 @@ func (s *Server) startProcessingInputPackets() {
 			}
 			log.Fatal(err)
 		}
-		// TODO: we should only process packet that has a input block. opcode=0x02
-		req, err := parseRequest(inPacket)
-		if err != nil {
-			log.Fatal(err)
+		if inPacket.hasBlock() {
+			req, err := parseRequest(inPacket)
+			if err != nil {
+				log.Fatal(err)
+			}
+			s.requestChan <- req
 		}
-		s.requestChan <- req
 	}
 }
 
+// handleRequest takes request that comes in and find the corresponding handler
 func (s *Server) handleRequest() {
 	for req := range s.requestChan {
 		s.resposneQueueLock.Lock()
@@ -93,10 +95,15 @@ func (s *Server) processResponse() {
 			fmt.Println("Failed to flush response - Error:", err)
 			continue
 		}
-		fmt.Printf("Flushed %d responses\n", flushedCount)
+		if flushedCount != 0 {
+			fmt.Printf("Flushed %d responses\n", flushedCount)
+		}
 	}
 }
 
+// flushResponses go through responses in the response queue of the server, and it flushes consecutive
+// responses starting from the front of the queue in batch to ensure that responses are synchronized in the same
+// order as the corresonding requests.
 func (s *Server) flushResponses(output io.Writer) (int, error) {
 	s.resposneQueueLock.Lock()
 	defer s.resposneQueueLock.Unlock()

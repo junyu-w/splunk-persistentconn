@@ -63,8 +63,8 @@ func ReadPacket(reader io.Reader) (*RequestPacket, error) {
 		if err := packet.readInputBlock(reader); err != nil {
 			return nil, err
 		}
-		fmt.Println("Block: ", packet.block)
 	}
+	fmt.Println("Received request packet:", packet)
 	return packet, nil
 }
 
