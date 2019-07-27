@@ -33,6 +33,11 @@ func NewServer() *Server {
 	}
 }
 
+// RegisterHandler registers a handler function for a given path (or path pattern)
+func (s *Server) RegisterHandler(path string, handler Handler, allowedMethods []string) {
+	s.registry.register(path, handler, allowedMethods)
+}
+
 // Run starts a persistentconn server and starts handling request sent from
 // client (with splunkd as the middle layer)
 func (s *Server) Run() {
@@ -80,7 +85,6 @@ func (s *Server) handleRequest() {
 				}
 			}
 			fmt.Printf("Finished handling - response - status: %d - body: %s\n", resp.StatusCode, resp.Body)
-			// FIXME: race condition where flushing has shrinked the queue so resulting in index out of range :(
 			slot.Value = resp
 			s.responseChan <- resp
 		}(req, elem)
