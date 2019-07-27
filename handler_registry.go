@@ -1,6 +1,10 @@
 package persistentconn
 
-import "time"
+import (
+	"fmt"
+	"math/rand"
+	"time"
+)
 
 type handlerRegistry struct {
 }
@@ -11,10 +15,11 @@ type Handler func(Request) (Response, error)
 func (rg *handlerRegistry) getHandler(path string) Handler {
 	// TODO: implement this
 	return func(req Request) (Response, error) {
-		time.Sleep(1 * time.Second)
+		sleepTime := rand.Intn(1000)
+		time.Sleep(time.Duration(sleepTime) * time.Millisecond)
 		return Response{
 			StatusCode: 200,
-			Body:       "hello world",
+			Body:       fmt.Sprintf("hello world %s", req.OutputMode),
 		}, nil
 	}
 }

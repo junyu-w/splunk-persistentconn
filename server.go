@@ -1,30 +1,35 @@
 package persistentconn
 
 import (
+	"bufio"
+	"container/list"
 	"fmt"
 	"io"
 	"log"
 	"net/http"
 	"os"
+	"sync"
 )
 
 // Server represents the persistentconn server that handles request
 // and writes response back to the client
 type Server struct {
-	requestChan   chan Request
-	responseChan  chan Response
-	responseQueue responseQueue
-	registry      *handlerRegistry
+	requestChan       chan Request
+	responseChan      chan Response
+	responseQueue     *list.List
+	registry          *handlerRegistry
+	resposneQueueLock *sync.Mutex
 }
 
 // NewServer creates a persistentconn server
 func NewServer() *Server {
+	// TODO: add registry initialization
 	return &Server{
-		requestChan:   make(chan Request),
-		responseChan:  make(chan Response),
-		responseQueue: newResponseQueue(),
-		// TODO: add registry initialization
-		registry: &handlerRegistry{},
+		requestChan:       make(chan Request),
+		responseChan:      make(chan Response),
+		responseQueue:     list.New(),
+		registry:          &handlerRegistry{},
+		resposneQueueLock: new(sync.Mutex),
 	}
 }
 
@@ -58,10 +63,13 @@ func (s *Server) startProcessingInputPackets() {
 
 func (s *Server) handleRequest() {
 	for req := range s.requestChan {
-		s.responseQueue = append(s.responseQueue, Response{isPlaceholder: true})
-		handler := s.registry.getHandler(req.PathInfo)
+		s.resposneQueueLock.Lock()
+		elem := s.responseQueue.PushBack(struct{}{})
+		s.resposneQueueLock.Unlock()
+
 		// handle request in a goroutine
-		go func(req Request, respIndex int) {
+		handler := s.registry.getHandler(req.PathInfo)
+		go func(req Request, slot *list.Element) {
 			resp, err := handler(req)
 			if err != nil {
 				resp = Response{
@@ -69,23 +77,58 @@ func (s *Server) handleRequest() {
 					Body:       err.Error(),
 				}
 			}
-			fmt.Printf("Got response - status: %d - body: %s - index: %d\n", resp.StatusCode, resp.Body, respIndex)
+			fmt.Printf("Finished handling - response - status: %d - body: %s\n", resp.StatusCode, resp.Body)
 			// FIXME: race condition where flushing has shrinked the queue so resulting in index out of range :(
-			s.responseQueue[respIndex] = resp
+			slot.Value = resp
 			s.responseChan <- resp
-		}(req, len(s.responseQueue)-1)
+		}(req, elem)
 	}
 }
 
 // processResponse proccesses response from handler and sent the response back to the client
 func (s *Server) processResponse() {
 	for range s.responseChan {
-		flushedCount, err := s.responseQueue.flushResponses()
+		flushedCount, err := s.flushResponses(os.Stdout)
 		if err != nil {
 			fmt.Println("Failed to flush response - Error:", err)
 			continue
 		}
 		fmt.Printf("Flushed %d responses\n", flushedCount)
-		s.responseQueue = s.responseQueue[flushedCount:]
 	}
+}
+
+func (s *Server) flushResponses(output io.Writer) (int, error) {
+	s.resposneQueueLock.Lock()
+	defer s.resposneQueueLock.Unlock()
+	// prepare response data to flush to stdout
+	elem := s.responseQueue.Front()
+	flushedElList := make([]*list.Element, 0)
+	writer := bufio.NewWriter(output)
+	for {
+		if elem == nil {
+			break
+		}
+		resp, ok := elem.Value.(Response)
+		if !ok {
+			break
+		}
+		data := resp.getRawData()
+		_, err := writer.WriteString(data)
+		if err != nil {
+			return 0, err
+		}
+		writer.WriteString("\n")
+		flushedEl := elem
+		flushedElList = append(flushedElList, flushedEl)
+		elem = elem.Next()
+	}
+	err := writer.Flush()
+	if err != nil {
+		return 0, err
+	}
+	// clean up flushed element from the queue
+	for _, flushedEl := range flushedElList {
+		s.responseQueue.Remove(flushedEl)
+	}
+	return len(flushedElList), nil
 }

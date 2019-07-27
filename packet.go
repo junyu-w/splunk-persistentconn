@@ -52,7 +52,6 @@ func ReadPacket(reader io.Reader) (*RequestPacket, error) {
 	if err := packet.readOpcode(reader); err != nil {
 		return nil, err
 	}
-	fmt.Println("Opcode: ", packet.opcode)
 	if packet.isFirst() {
 		// if packet is the beginning of the request, read command and command args
 		if err := packet.readCommandAndArgs(reader); err != nil {
