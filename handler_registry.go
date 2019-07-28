@@ -36,10 +36,7 @@ func newRoute(pathPattern string, handler Handler, allowedMethods []string) *rou
 	}
 }
 
-// translatePatternToRegexp translates a path pattern in the format of "pc1/:<name>/pc2"
-// where "pc" stands for path component and can be any arbitary string, and ":name" will be replaced
-// based on the request's path. E.g. if request is hitting "pc1/hello/pc2", the param name=hello will
-// be stored in the context of the request
+// translatePatternToRegexp translates a path pattern to a regexp
 func translatePatternToRegexp(pathPattern string) *regexp.Regexp {
 	parts := strings.Split(pathPattern, "/")
 	regexpStrParts := make([]string, len(parts))

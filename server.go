@@ -32,7 +32,12 @@ func NewServer() *Server {
 	}
 }
 
-// Handle registers a handler function for a given path (or path pattern)
+// Handle registers a handler function for a given path (or path pattern).
+// A path pattern is in the format of "<component>/:<param_1>/<component>/..." and a path component
+// starting with ":" indicates it's a parameter which will be inferred from the actual path in the request
+// E.g. if the registered path pattern is "entity/:name/data" and the
+// path in the request is "entity/hello/data", then the key-value pair {"name": "hello"} will be stored
+// in the request's params which can be later referenced inside of the handler.
 func (s *Server) Handle(path string, handler Handler, allowedMethods ...string) {
 	s.registry.register(path, handler, allowedMethods)
 }
@@ -83,6 +88,7 @@ func (s *Server) handleRequest() {
 					Body:       err.Error(),
 				}
 			}
+			// TODO: replace all print statements with proper logging
 			fmt.Printf("Finished handling - response - status: %d - body: %s\n", resp.StatusCode, resp.Body)
 			slot.Value = resp
 			s.responseChan <- resp

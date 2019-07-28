@@ -4,7 +4,7 @@ import (
 	"encoding/json"
 )
 
-// Request represents the request sent from client
+// splunkdRequest represents the request sent from splunkd
 type splunkdRequest struct {
 	OutputMode         string `json:"output_mode"`
 	OutputModeExplicit bool   `json:"output_mode_explicit"`
