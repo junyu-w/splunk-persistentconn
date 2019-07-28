@@ -42,14 +42,14 @@ func (s *Server) Handle(path string, handler Handler, allowedMethods ...string) 
 func (s *Server) Run() {
 	go s.handleRequest()
 	go s.processResponse()
-	s.startProcessingInputPackets()
+	s.startProcessingInputPackets(os.Stdin)
 }
 
 // startProcessingInputPackets starts a separate goroutine that reads request sent from client
 // and is the entrypoint of a server process
-func (s *Server) startProcessingInputPackets() {
+func (s *Server) startProcessingInputPackets(input io.Reader) {
 	for {
-		inPacket, err := ReadPacket(os.Stdin)
+		inPacket, err := ReadPacket(input)
 		if err != nil {
 			if err == io.EOF {
 				continue

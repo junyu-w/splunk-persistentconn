@@ -62,8 +62,8 @@ type Request struct {
 		Authtoken string `json:"authtoken"`
 	} `json:"session"`
 	Query   map[string]string `json:"query"`
-	Form    map[string]string `json:"form"`
-	Payload string            `json:"payload"`
+	Form    map[string]string `json:"form,omitempty"`
+	Payload string            `json:"payload,omitempty"`
 	Path    string            `json:"path"`
 	Params  map[string]string
 }
