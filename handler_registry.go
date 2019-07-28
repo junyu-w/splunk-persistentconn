@@ -64,7 +64,13 @@ func (rg *handlerRegistry) getHandler(req Request) Handler {
 	handler := NoMatchingHandler
 	for _, rt := range rg.routes {
 		if matches := rt.Pattern.FindStringSubmatch(req.Path); len(matches) > 0 && contains(rt.Methods, req.Method) {
-			// TODO: added matched paramter to request or context or whatever
+			matchGroupNames := rt.Pattern.SubexpNames()
+			for idx, name := range matchGroupNames {
+				// Since the Regexp as a whole cannot be named, first matched name is always the empty string
+				if name != "" {
+					req.Params[name] = matches[idx]
+				}
+			}
 			return rt.Handler
 		}
 	}

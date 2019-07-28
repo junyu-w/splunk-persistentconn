@@ -65,6 +65,7 @@ type Request struct {
 	Form    map[string]string `json:"form"`
 	Payload string            `json:"payload"`
 	Path    string            `json:"path"`
+	Params  map[string]string
 }
 
 // parseRequests creates a Request object by parsing information from a request packet.
@@ -84,6 +85,7 @@ func parseRequest(p *RequestPacket) (Request, error) {
 		Form:       tupleListToMap(splunkdReq.Form),
 		Payload:    splunkdReq.Payload,
 		Path:       splunkdReq.PathInfo,
+		Params:     make(map[string]string),
 	}
 	return request, nil
 }
