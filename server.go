@@ -61,13 +61,7 @@ func (s *Server) startProcessingInputPackets(input io.Reader) {
 			}
 			log.Fatal(err)
 		}
-		if inPacket.hasBlock() {
-			req, err := parseRequest(inPacket)
-			if err != nil {
-				log.Fatal(err)
-			}
-			s.requestChan <- req
-		}
+		s.parseRequest(inPacket)
 	}
 }
 
@@ -79,14 +73,18 @@ func (s *Server) handleRequest() {
 		s.resposneQueueLock.Unlock()
 
 		// handle request in a goroutine
-		handler := s.registry.getHandler(req)
 		go func(req Request, slot *list.Element) {
-			resp, err := handler(req)
-			if err != nil {
-				resp = Response{
-					StatusCode: http.StatusInternalServerError,
-					Body:       err.Error(),
+			var resp Response
+			if req.isInit {
+				resp = Response{isInit: true}
+			} else {
+				handler := s.registry.getHandler(req)
+				handlerResponse, err := handler(req)
+				if err != nil {
+					handlerResponse.StatusCode = http.StatusInternalServerError
+					handlerResponse.Body = err.Error()
 				}
+				resp = handlerResponse
 			}
 			// TODO: replace all print statements with proper logging
 			// fmt.Printf("Finished handling - response - status: %d - body: %s\n", resp.StatusCode, resp.Body)
@@ -134,7 +132,6 @@ func (s *Server) flushResponses(output io.Writer) (int, error) {
 		if err != nil {
 			return 0, err
 		}
-		writer.WriteString("\n")
 		flushedEl := elem
 		flushedElList = append(flushedElList, flushedEl)
 		elem = elem.Next()

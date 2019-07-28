@@ -2,6 +2,7 @@ package persistentconn
 
 import (
 	"encoding/json"
+	"log"
 )
 
 // splunkdRequest represents the request sent from splunkd
@@ -50,6 +51,11 @@ type splunkdRequest struct {
 
 // Request contains information of an incoming request
 type Request struct {
+	// isInit indicates if this request corresponds to a packet with command byte set to INIT
+	// NOTE: even though a packet's command byte could be both INIT and BLOCK, we will separate them out
+	// into two different Request objects to avoid confusion. Request object with isInit: true should not
+	// have other attributes set (i.e shouldn't be a data request and an init request at the same time).
+	isInit     bool
 	OutputMode string            `json:"output_mode"`
 	Headers    map[string]string `json:"headers"`
 	Method     string            `json:"method"`
@@ -69,23 +75,29 @@ type Request struct {
 }
 
 // parseRequests creates a Request object by parsing information from a request packet.
-func parseRequest(p *RequestPacket) (Request, error) {
-	block := p.block
-	var splunkdReq splunkdRequest
-	if err := json.Unmarshal([]byte(block), &splunkdReq); err != nil {
-		return Request{}, err
+func (s *Server) parseRequest(p *RequestPacket) {
+	if p.isFirst() {
+		request := Request{isInit: true}
+		s.requestChan <- request
 	}
-	request := Request{
-		OutputMode: splunkdReq.OutputMode,
-		Headers:    tupleListToMap(splunkdReq.Headers),
-		Method:     splunkdReq.Method,
-		Namespace:  splunkdReq.Ns,
-		Session:    splunkdReq.Session,
-		Query:      tupleListToMap(splunkdReq.Query),
-		Form:       tupleListToMap(splunkdReq.Form),
-		Payload:    splunkdReq.Payload,
-		Path:       splunkdReq.PathInfo,
-		Params:     make(map[string]string),
+	if p.hasBlock() {
+		block := p.block
+		var splunkdReq splunkdRequest
+		if err := json.Unmarshal([]byte(block), &splunkdReq); err != nil {
+			log.Fatal(err)
+		}
+		request := Request{
+			OutputMode: splunkdReq.OutputMode,
+			Headers:    tupleListToMap(splunkdReq.Headers),
+			Method:     splunkdReq.Method,
+			Namespace:  splunkdReq.Ns,
+			Session:    splunkdReq.Session,
+			Query:      tupleListToMap(splunkdReq.Query),
+			Form:       tupleListToMap(splunkdReq.Form),
+			Payload:    splunkdReq.Payload,
+			Path:       splunkdReq.PathInfo,
+			Params:     make(map[string]string),
+		}
+		s.requestChan <- request
 	}
-	return request, nil
 }
