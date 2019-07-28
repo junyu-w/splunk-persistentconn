@@ -23,7 +23,6 @@ type Server struct {
 
 // NewServer creates a persistentconn server
 func NewServer() *Server {
-	// TODO: add registry initialization
 	return &Server{
 		requestChan:       make(chan Request),
 		responseChan:      make(chan Response),
