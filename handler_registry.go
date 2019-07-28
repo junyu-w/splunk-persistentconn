@@ -8,6 +8,8 @@ import (
 )
 
 // Handler is a handler function that takes a persistentconn request and returns a response or error
+// if error is returned, the server will return a 500 (Internal Server Error) response with the returned
+// error's message as the response body
 type Handler func(Request) (Response, error)
 
 // NoMatchingHandler is the default handler returned when no matching path

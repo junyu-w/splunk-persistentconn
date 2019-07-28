@@ -43,7 +43,6 @@ func (s *Server) Handle(path string, handler Handler, allowedMethods ...string) 
 
 // Run starts a persistentconn server and starts handling request sent from
 // client (with splunkd as the middle layer)
-// FIXME: splunkd always starts new server process upon request
 func (s *Server) Run() {
 	go s.handleRequest()
 	go s.processResponse()
