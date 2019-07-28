@@ -65,7 +65,7 @@ type Request struct {
 	Form    map[string]string `json:"form,omitempty"`
 	Payload string            `json:"payload,omitempty"`
 	Path    string            `json:"path"`
-	Params  map[string]string
+	Params  map[string]string `json:"params,omitempty"`
 }
 
 // parseRequests creates a Request object by parsing information from a request packet.
