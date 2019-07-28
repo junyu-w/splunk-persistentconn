@@ -33,8 +33,8 @@ func NewServer() *Server {
 	}
 }
 
-// RegisterHandler registers a handler function for a given path (or path pattern)
-func (s *Server) RegisterHandler(path string, handler Handler, allowedMethods []string) {
+// Handle registers a handler function for a given path (or path pattern)
+func (s *Server) Handle(path string, handler Handler, allowedMethods ...string) {
 	s.registry.register(path, handler, allowedMethods)
 }
 
@@ -75,7 +75,7 @@ func (s *Server) handleRequest() {
 		s.resposneQueueLock.Unlock()
 
 		// handle request in a goroutine
-		handler := s.registry.getHandler(req.PathInfo)
+		handler := s.registry.getHandler(req)
 		go func(req Request, slot *list.Element) {
 			resp, err := handler(req)
 			if err != nil {

@@ -1,9 +1,11 @@
 package persistentconn
 
-import "encoding/json"
+import (
+	"encoding/json"
+)
 
 // Request represents the request sent from client
-type Request struct {
+type splunkdRequest struct {
 	OutputMode         string `json:"output_mode"`
 	OutputModeExplicit bool   `json:"output_mode_explicit"`
 	Server             struct {
@@ -46,12 +48,42 @@ type Request struct {
 	Payload string     `json:"payload,omitempty"`
 }
 
+// Request contains information of an incoming request
+type Request struct {
+	OutputMode string            `json:"output_mode"`
+	Headers    map[string]string `json:"headers"`
+	Method     string            `json:"method"`
+	Namespace  struct {
+		App  string `json:"app"`
+		User string `json:"user"`
+	} `json:"namespace"`
+	Session struct {
+		User      string `json:"user"`
+		Authtoken string `json:"authtoken"`
+	} `json:"session"`
+	Query   map[string]string `json:"query"`
+	Form    map[string]string `json:"form"`
+	Payload string            `json:"payload"`
+	Path    string            `json:"path"`
+}
+
 // parseRequests creates a Request object by parsing information from a request packet.
 func parseRequest(p *RequestPacket) (Request, error) {
 	block := p.block
-	var request Request
-	if err := json.Unmarshal([]byte(block), &request); err != nil {
+	var splunkdReq splunkdRequest
+	if err := json.Unmarshal([]byte(block), &splunkdReq); err != nil {
 		return Request{}, err
+	}
+	request := Request{
+		OutputMode: splunkdReq.OutputMode,
+		Headers:    tupleListToMap(splunkdReq.Headers),
+		Method:     splunkdReq.Method,
+		Namespace:  splunkdReq.Ns,
+		Session:    splunkdReq.Session,
+		Query:      tupleListToMap(splunkdReq.Query),
+		Form:       tupleListToMap(splunkdReq.Form),
+		Payload:    splunkdReq.Payload,
+		Path:       splunkdReq.PathInfo,
 	}
 	return request, nil
 }

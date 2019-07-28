@@ -1,8 +1,10 @@
 package persistentconn
 
 import (
+	"fmt"
 	"net/http"
 	"regexp"
+	"strings"
 )
 
 // Handler is a handler function that takes a persistentconn request and returns a response or error
@@ -24,7 +26,7 @@ type route struct {
 }
 
 func newRoute(pathPattern string, handler Handler, allowedMethods []string) *route {
-	re := regexp.MustCompile(pathPattern)
+	re := translatePatternToRegexp(pathPattern)
 	return &route{
 		Pattern: re,
 		Handler: handler,
@@ -32,32 +34,32 @@ func newRoute(pathPattern string, handler Handler, allowedMethods []string) *rou
 	}
 }
 
-func (r *route) findMatch(path string) Handler {
-	// TODO: implement this
-	return nil
+func translatePatternToRegexp(pathPattern string) *regexp.Regexp {
+	parts := strings.Split(pathPattern, "/")
+	regexpStrParts := make([]string, len(parts))
+	for idx, p := range parts {
+		if strings.HasPrefix(p, ":") {
+			p = fmt.Sprintf(`(?P<%s>[\S|^\/]+)`, p[1:])
+		}
+		regexpStrParts[idx] = p
+	}
+	regexpStr := strings.Join(regexpStrParts, "/")
+	re := regexp.MustCompile(regexpStr)
+	return re
 }
 
 type handlerRegistry struct {
 	routes []*route
 }
 
-func (rg *handlerRegistry) getHandler(path string) Handler {
+func (rg *handlerRegistry) getHandler(req Request) Handler {
 	handler := NoMatchingHandler
-	for _, route := range rg.routes {
-		handler = route.findMatch(path)
-		if handler != nil {
-			break
+	for _, rt := range rg.routes {
+		if matches := rt.Pattern.FindStringSubmatch(req.Path); len(matches) > 0 && contains(rt.Methods, req.Method) {
+			return rt.Handler
 		}
 	}
 	return handler
-	// return func(req Request) (Response, error) {
-	// 	sleepTime := rand.Intn(1000)
-	// 	time.Sleep(time.Duration(sleepTime) * time.Millisecond)
-	// 	return Response{
-	// 		StatusCode: 200,
-	// 		Body:       fmt.Sprintf("hello world %s", req.OutputMode),
-	// 	}, nil
-	// }
 }
 
 func (rg *handlerRegistry) register(path string, handler Handler, allowedMethods []string) {
