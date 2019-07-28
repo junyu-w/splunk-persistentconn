@@ -3,7 +3,6 @@ package persistentconn
 import (
 	"bufio"
 	"container/list"
-	"fmt"
 	"io"
 	"log"
 	"net/http"
@@ -44,6 +43,7 @@ func (s *Server) Handle(path string, handler Handler, allowedMethods ...string) 
 
 // Run starts a persistentconn server and starts handling request sent from
 // client (with splunkd as the middle layer)
+// FIXME: splunkd always starts new server process upon request
 func (s *Server) Run() {
 	go s.handleRequest()
 	go s.processResponse()
@@ -89,7 +89,7 @@ func (s *Server) handleRequest() {
 				}
 			}
 			// TODO: replace all print statements with proper logging
-			fmt.Printf("Finished handling - response - status: %d - body: %s\n", resp.StatusCode, resp.Body)
+			// fmt.Printf("Finished handling - response - status: %d - body: %s\n", resp.StatusCode, resp.Body)
 			slot.Value = resp
 			s.responseChan <- resp
 		}(req, elem)
@@ -101,11 +101,11 @@ func (s *Server) processResponse() {
 	for range s.responseChan {
 		flushedCount, err := s.flushResponses(os.Stdout)
 		if err != nil {
-			fmt.Println("Failed to flush response - Error:", err)
+			// fmt.Println("Failed to flush response - Error:", err)
 			continue
 		}
 		if flushedCount != 0 {
-			fmt.Printf("Flushed %d responses\n", flushedCount)
+			// fmt.Printf("Flushed %d responses\n", flushedCount)
 		}
 	}
 }
@@ -119,6 +119,7 @@ func (s *Server) flushResponses(output io.Writer) (int, error) {
 	// prepare response data to flush to stdout
 	elem := s.responseQueue.Front()
 	flushedElList := make([]*list.Element, 0)
+
 	writer := bufio.NewWriter(output)
 	for {
 		if elem == nil {

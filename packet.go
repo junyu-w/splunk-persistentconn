@@ -64,7 +64,7 @@ func ReadPacket(reader io.Reader) (*RequestPacket, error) {
 			return nil, err
 		}
 	}
-	fmt.Println("Received request packet:", packet)
+	// fmt.Println("Received request packet:", packet)
 	return packet, nil
 }
 
