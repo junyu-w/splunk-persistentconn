@@ -1,3 +1,6 @@
+// Package persistentconn implements the persistent script protocol that splunk core uses
+// to communicate with app's persistent REST endpoint. This package handles basic routing and request/response
+// handling.
 package persistentconn
 
 import (
@@ -9,9 +12,6 @@ import (
 	"os"
 	"sync"
 )
-
-// TODO: does splunkd doesn't forward request to the server process until it gets a response back???
-// if that's the case then all the gorouting multiplexing benefit is eliminated and even adds a bit more overhead
 
 // Server represents the persistentconn server that handles request
 // and writes response back to the client
