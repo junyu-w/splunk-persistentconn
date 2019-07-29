@@ -36,6 +36,8 @@ func main() {
 }
 ```
 
+An example app is located in the `examples` directory.
+
 ## Performance
 
 This package is built to take advantage of the concurrent processing capability provided by goroutines for each handler registered. However, since Splunk core sends requests to the server process in a **synchronous** manner, only one goroutine is spawned at a time therefore currently there's no performance boost.
