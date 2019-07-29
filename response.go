@@ -13,8 +13,8 @@ type Response struct {
 }
 
 // getRawData transforms the response to a payload that splunkd can decode
-// splunkd response protocol: 0\n<len_response_bytes>\n<response>
-// NOTE: leading 0 in protocol is necessary to let splunkd know it's a response
+// splunkd protocol for response to init packet: "0\n" (empty byte with length 0) to indicate success
+// splunkd protocl for response to data packet: <len_response_bytes>\n<response>
 func (resp Response) getRawData() string {
 	if resp.isInit {
 		return "0\n"
